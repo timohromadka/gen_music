@@ -14,8 +14,13 @@
             "python": "/home/timoh/anaconda3/envs/GEN_MUSIC/bin/python",
             "args": [
                 "--dataset", "spotify_sleep_dataset",
-                "--data_type", "waveform",
-                "--model", "diffusion"
+                "--dataset_type", "waveform", // "waveform", "mel-spectrogram"
+                "--model", "diffusion",
+                "--n_samples", "100",
+                "--convert_to_mono",
+                "--sample_rate", "44100",
+                "--disable_wandb",
+                // "--run_dummy_experiment"
             ],
             "env": {
                 "PYTHONPATH": "${workspaceFolder}" // assuming your project's root is in the PYTHONPATH

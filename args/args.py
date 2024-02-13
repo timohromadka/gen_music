@@ -5,9 +5,13 @@ from datetime import datetime
 
 parser = argparse.ArgumentParser(description='Training Dynamics Guided Knowledge Distillation.')
 
+parser.add_argument('--run_dummy_experiment', required=False, action='store_true', help='If True, will run a dummy experiment (for wandb testing).')
 
 # Dataset
 parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset'])
+parser.add_argument('--save_wav_file', required=False, action='store_true', help='If True, will save .wav files (waveform) for each data point in addition to .pt files.')
+parser.add_argument('--n_samples', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
+parser.add_argument('--sample_length', required=False, type=int, default=0, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used..')
 
 # Model 
 parser.add_argument('--model', type=str, required=True, choices=['diffusion', 'vae', 'gan'])
@@ -16,8 +20,10 @@ parser.add_argument('--pretrained', action='store_true', help='If True, use pret
 
 # Audio Setups
 parser.add_argument('--sample_rate', type=int, default=24000)
-parser.add_argument('--data_type', type=str, default='waveform', choices=['waveform', 'spectrogram', 'mel-spectrogram'])
+parser.add_argument('--dataset_type', type=str, default='waveform', choices=['waveform', 'spectrogram', 'mel-spectrogram'])
 parser.add_argument('--n_fft', type=int, default=400, help='Number of Fast Fourier Transform (FFT) points used for analyzing the audio signal. Basically, how many bins are we using to represent frequency spectrum?')
+parser.add_argument('--n_mels', type=int, default=128, help='The number of Mel bands to generate in the Mel spectrogram. This controls the frequency resolution of the Mel spectrogram. Typically, a larger number of Mel bands provides finer frequency resolution. A common default value is 128, but this can be adjusted based on specific audio analysis requirements or computational constraints.')
+parser.add_argument('--convert_to_mono', action='store_true', help='Whether to convert audio samples into monophonic audio (1 channel).')
 
 
 # Training Configuration
@@ -37,12 +43,13 @@ parser.add_argument('--num_gpus', type=int, default=1, help='Number of GPUs to u
 parser.add_argument('--deterministic', action='store_true', help='Ensures reproducibility. May impact performance.')
 
 # General Configuration
+parser.add_argument('--cache_dir', type=str, default='cache/data', help='Specify where to store data (to repeat expensive processing/data fetching each run).')
 parser.add_argument('--seed', type=int, default=42, help='Random seed for reproducibility.')
 parser.add_argument('--data_augmentation', type=bool, default=True, help='Whether to use data augmentation.')
 parser.add_argument('--logging_interval', type=int, default=100, help='Interval for logging training metrics.')
 # parser.add_argument('--checkpoint_freq', type=int, default=3, help='Frequency of saving top-k model checkpoints.')
 parser.add_argument('--save_top_k', type=int, default=1, help='Select k-best model checkpoints to save for each run.')
-parser.add_argument('--test_only', action='store_true', help='If True, will only run testing, no training or validation will be performed.')
+parser.add_argument('--test_only', action='store_true', help='If True, will only run testing/sampling, no training or validation will be performed.')
 parser.add_argument('--val_split_seed', type=int, default=42, help='Seed for determining train/val/test split.')
 
 

@@ -39,8 +39,8 @@ def train_model(args, data_module, train_unshuffled_loader, wandb_logger=None):
     # log useful model info
     # no inbuilt flop counter: https://github.com/Lightning-AI/pytorch-lightning/issues/12567
     # ========================
-    param_count, model_size_mb = get_model_info(model)
-    wandb.log({'parameter_count': param_count, 'model_size_mb': model_size_mb})
+    # param_count, model_size_mb = get_model_info(model)
+    # wandb.log({'parameter_count': param_count, 'model_size_mb': model_size_mb})
     
     # ========================
     # callbacks

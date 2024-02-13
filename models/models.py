@@ -7,15 +7,13 @@ from audio_diffusion_pytorch import DiffusionModel, UNetV0, VDiffusion, VSampler
 import pytorch_lightning as pl
 import torch
 import torch.nn.functional as F
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, F1Score
 import torch.nn as nn
 import torchvision.models as models
 
 import sys
 sys.path.append('..')
-from utils.constants import NUM_CHANNELS, NUM_CLASSES
-
-from torchmetrics import Precision, Recall, F1Score, Accuracy
+from utils.constants import SAMPLE_LENGTH
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('models/models.py')
@@ -25,18 +23,32 @@ class AudioDiffusionLightningModule(pl.LightningModule):
     def __init__(self, args):
         super().__init__()
         self.args = args
+        logger.info('Initializing diffusion model using DiffusionModel class.')
+        # self.model = DiffusionModel(
+        #     net_t=UNetV0,
+        #     in_channels=1 if args.convert_to_mono else 2,
+        #     channels=[8, 32, 64, 128, 256, 512, 512, 1024, 1024],
+        #     factors=[1, 4, 4, 4, 2, 2, 2, 2, 2],
+        #     items=[1, 2, 2, 2, 2, 2, 2, 4, 4],
+        #     attentions=[0, 0, 0, 0, 0, 1, 1, 1, 1],
+        #     attention_heads=8,
+        #     attention_features=64,
+        #     diffusion_t=VDiffusion,
+        #     sampler_t=VSampler,
+        # )
         self.model = DiffusionModel(
             net_t=UNetV0,
-            in_channels=2,
-            channels=[8, 32, 64, 128, 256, 512, 512, 1024, 1024],
-            factors=[1, 4, 4, 4, 2, 2, 2, 2, 2],
-            items=[1, 2, 2, 2, 2, 2, 2, 4, 4],
-            attentions=[0, 0, 0, 0, 0, 1, 1, 1, 1],
-            attention_heads=8,
-            attention_features=64,
+            in_channels=1,  # Assuming your audio data has 1 channel
+            channels=[16, 32, 64, 128],  # Fewer and narrower layers
+            factors=[1, 2, 2, 2],  # Simplified down/up-sampling factors
+            items=[1, 1, 1, 1],  # Fewer items, simplifies architecture
+            attentions=[0, 0, 0, 0],  # Disable attention or use it in fewer layers
+            attention_heads=4,  # Fewer attention heads
+            attention_features=32,  # Less features in attention layers
             diffusion_t=VDiffusion,
             sampler_t=VSampler,
         )
+        logger.info('Done!')
         # Define metrics specific to audio models if needed
 
     def forward(self, audio):
@@ -47,15 +59,32 @@ class AudioDiffusionLightningModule(pl.LightningModule):
         loss = self.model(audio)
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
+        
+    def on_validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        self.log('avg_val_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)
 
     def validation_step(self, batch, batch_idx):
         audio, _ = batch
+        loss = self.model(audio)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        return {'val_loss': loss}
         # Optionally perform sampling here and log or save samples
         # sample = self.model.sample(audio, num_steps=10)
         # Log or save the generated samples
+        
+    def test_epoch_end(self, outputs):
+        avg_loss = torch.stack([x['test_loss'] for x in outputs]).mean()
+        self.log('avg_test_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)
+
 
     def test_step(self, batch, batch_idx):
         audio, _ = batch
+        loss = self.model(audio)
+        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        # Additional test metrics or operations can go here
+        return {'test_loss': loss}
+
         # Similar to validation_step, perform sampling and log or save samples
 
     def configure_optimizers(self):
@@ -66,6 +95,44 @@ class AudioDiffusionLightningModule(pl.LightningModule):
             raise ValueError("Unsupported optimizer type")
 
         return optimizer
+    
+class DummyModel(pl.LightningModule):
+    def __init__(self):
+        super(DummyModel, self).__init__()
+        self.linear = nn.Linear(10, 1)
+        self.accuracy = Accuracy(task="binary", threshold=0.5)
+        self.f1_score = F1Score(task="binary", num_classes=2, threshold=0.5)
+
+    def forward(self, x):
+        return torch.sigmoid(self.linear(x))
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.binary_cross_entropy(y_hat, y)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.binary_cross_entropy(y_hat, y)
+        self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        y_hat = self(x)
+        loss = F.binary_cross_entropy(y_hat, y)
+        acc = self.accuracy(y_hat, y.int())
+        f1 = self.f1_score(y_hat, y.int())
+        self.log('test_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log('test_acc', acc, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log('test_f1', f1, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        return {'test_loss': loss, 'test_acc': acc, 'test_f1': f1}
+
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=0.02)
     
     
 def get_model(args):
@@ -81,7 +148,7 @@ def get_model(args):
         return AudioGANLightningModule(args)
     
     else:
-        raise ValueError(f"Invalid model type: {args.model}. Expected 'resnet', 'efficientnet', 'visualtransformer', 'vgg', 'mobilenet'.")
+        raise ValueError(f"Invalid model type: {args.model}. Expected 'diffusion', 'vae', 'gan'.")
 
   
 def load_model_from_run_name(teacher_run_name, args):

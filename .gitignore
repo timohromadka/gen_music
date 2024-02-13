@@ -161,6 +161,12 @@ cython_debug/
 
 # cache (e.g. from datasets)
 cache/
+data/
 
 # wandb logs and experiments
 wandb/
+th716_mphil_project/
+
+# artifact files
+*.wav
+*.mp3
