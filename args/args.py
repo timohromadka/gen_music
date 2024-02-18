@@ -8,14 +8,14 @@ parser = argparse.ArgumentParser(description='Training Dynamics Guided Knowledge
 parser.add_argument('--run_dummy_experiment', required=False, action='store_true', help='If True, will run a dummy experiment (for wandb testing).')
 
 # Dataset
-parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset'])
+parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
 parser.add_argument('--save_wav_file', required=False, action='store_true', help='If True, will save .wav files (waveform) for each data point in addition to .pt files.')
 parser.add_argument('--n_samples', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
 parser.add_argument('--sample_length', required=False, type=int, default=0, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used..')
 
 # Model 
 parser.add_argument('--model', type=str, required=True, choices=['diffusion', 'vae', 'gan'])
-# parser.add_argument('--model_size', type=str, required=True, choices=['small', 'medium', 'large'])
+parser.add_argument('--model_size', type=str, default='tiny', required=True, choices=['tiny', 'small', 'medium', 'large'])
 parser.add_argument('--pretrained', action='store_true', help='If True, use pretrained weights (usually pretrained on ImageNet).')
 
 # Audio Setups
@@ -27,12 +27,13 @@ parser.add_argument('--convert_to_mono', action='store_true', help='Whether to c
 
 
 # Training Configuration
-parser.add_argument('--epochs', type=int, default=50, help='Maximum number of epochs for training.')
-parser.add_argument('--max_steps', type=int, default=1000000, help='Maximum number of training steps (batches) for training.')
+parser.add_argument('--epochs', type=int, help='Maximum number of epochs for training.')
+parser.add_argument('--train_by_epochs', action='store_true', help='If True, training will be done on a per-epoch basis (as defined by epochs). If false, training will be done on a per-step basis (as defined by max_steps).')
+parser.add_argument('--max_steps', type=int, default=1000, help='Maximum number of training steps (batches) for training.')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for the optimizer.')
 parser.add_argument('--optimizer', type=str, default='Adam', choices=['Adam', 'AdamW', 'SGD'], help='Optimizer for training.')
-parser.add_argument('--train_batch_size', type=int, default=32, help='Batch size for training.')
-parser.add_argument('--validation_batch_size', type=int, default=32, help='Batch size for validation.')
+parser.add_argument('--train_batch_size', type=int, default=8, help='Batch size for training.')
+parser.add_argument('--validation_batch_size', type=int, default=8, help='Batch size for validation.')
 parser.add_argument('--gradient_clip_val', type=float, default=0.5, help='Gradient clipping value to prevent exploding gradients.')
 parser.add_argument('--checkpoint_dir', type=str, default='./model_checkpoints/', help='Directory to save model checkpoints.')
 parser.add_argument('--force_full_epoch_training', action='store_true', help='If True, then training will continue for the specified amount of epochs regardless.')
