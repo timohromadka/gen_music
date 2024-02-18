@@ -65,14 +65,14 @@ def main():
             # ================================
             # FETCH DATASET 
             # ================================
-            train_loader, train_unshuffled_loader, val_loader, test_loader = get_dataloaders(args)
+            train_loader, val_loader, test_loader = get_dataloaders(args)
             data_module = CustomDataModule(train_loader, val_loader, test_loader)
             
             # ================================
             # UNDERGO TRAINING
             # ================================
             train_model(
-                args, data_module, train_unshuffled_loader, wandb_logger
+                args, data_module, wandb_logger
             )
             
             process_results(args)
@@ -94,13 +94,13 @@ def main():
         wandb.finish(exit_code=-1)
         
 
-    except Exception as e:
-        print(traceback.print_exc(), file=sys.stderr)
-        print(f"An error occurred: {e}\n Terminating run here.")
-        # Log error message to wandb
-        wandb.log({"critical_error": str(e)})
-        # Finish the wandb run without specifying exit_code if fail() is not available
-        wandb.finish(exit_code=-1)
+    # except Exception as e:
+    #     print(traceback.print_exc(), file=sys.stderr)
+    #     print(f"An error occurred: {e}\n Terminating run here.")
+    #     # Log error message to wandb
+    #     wandb.log({"critical_error": str(e)})
+    #     # Finish the wandb run without specifying exit_code if fail() is not available
+    #     wandb.finish(exit_code=-1)
 
         
 if __name__ == '__main__':

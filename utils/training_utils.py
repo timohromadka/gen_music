@@ -20,7 +20,7 @@ sys.path.append("..")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('utils/trainer_utils.py')
 
-def train_model(args, data_module, train_unshuffled_loader, wandb_logger=None):
+def train_model(args, data_module, wandb_logger=None):
     """
     Return 
     - Pytorch Lightning Trainer
@@ -72,22 +72,28 @@ def train_model(args, data_module, train_unshuffled_loader, wandb_logger=None):
     # Run training and testing
     # ========================
     logger.info('Initializing Training.')
-    trainer = pl.Trainer(
-        max_epochs=args.epochs,
-        # max_steps=args.max_steps, # let's stick with epochs
-        gradient_clip_val=args.gradient_clip_val,
-        logger=wandb_logger,
-        log_every_n_steps=args.logging_interval,
-        val_check_interval=args.val_check_interval,
-        callbacks=callbacks,
-        accelerator=args.accelerator,
-        devices=args.num_gpus,
-        precision=args.precision,
-        # detect_anomaly=True,
-        detect_anomaly=False,
-        overfit_batches=args.overfit_batches,
-        deterministic=args.deterministic,
-    )
+    trainer_kwargs = {
+        "gradient_clip_val": args.gradient_clip_val,
+        "logger": wandb_logger,
+        "log_every_n_steps": args.logging_interval,
+        "val_check_interval": args.val_check_interval,
+        "callbacks": callbacks,
+        "accelerator": args.accelerator,
+        "devices": args.num_gpus,
+        "precision": args.precision,
+        "detect_anomaly": False,
+        "overfit_batches": args.overfit_batches,
+        "deterministic": args.deterministic,
+    }
+
+    # Dynamically set max_epochs or max_steps based on the condition
+    if args.train_by_epochs:
+        trainer_kwargs["max_epochs"] = args.epochs  # Train for a specific number of epochs
+    else:
+        trainer_kwargs["max_steps"] = args.max_steps  # Train for a specific number of steps
+
+    # Initialize the Trainer with the dynamically constructed arguments
+    trainer = pl.Trainer(**trainer_kwargs)
  
     if not args.test_only:
         trainer.fit(model, data_module)

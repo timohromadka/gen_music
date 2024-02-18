@@ -56,7 +56,8 @@ class AudioDataset(Dataset):
         if os.path.exists(file_path):
             waveform, sample_rate = torch.load(file_path)
             # Ensure the waveform is of the expected size, trim if necessary
-            expected_size = self.sample_length * self.sample_rate  # Set this to your desired size
+            # This is due to some artifacts of the waveforms having an extra element
+            expected_size = self.sample_length * self.sample_rate # seconds * sample_rate
             waveform = waveform[:, :expected_size]
             return waveform, sample_rate
         else:
@@ -102,13 +103,14 @@ def preprocess_and_cache_dataset(df, args):
                 waveform, sample_rate = torchaudio.load(BytesIO(response.content))
 
                 # Resample and convert to mono if required
+                if args.convert_to_mono and waveform.size(0) > 1:
+                    waveform = torch.mean(waveform, dim=0, keepdim=True)
+                    
                 # TODO
-                # Make sure this iss actually doing what we believe its doing!????
+                # Make sure this is actually doing what we believe its doing!????
                 if sample_rate != args.sample_rate:
                     resampler = Resample(orig_freq=sample_rate, new_freq=args.sample_rate)
                     waveform = resampler(waveform)
-                if args.convert_to_mono and waveform.size(0) > 1:
-                    waveform = torch.mean(waveform, dim=0, keepdim=True)
 
                 if args.dataset_type == 'spectrogram':
                     waveform = get_spectrogram(waveform)
@@ -116,7 +118,7 @@ def preprocess_and_cache_dataset(df, args):
                     waveform = get_mel_spectrogram(waveform, sample_rate, args.n_mels)
 
                 # save as a .pt tensor
-                torch.save((waveform, sample_rate), tensor_path)
+                torch.save((waveform, args.sample_rate), tensor_path)
                 # ...and then as a .wav file (optional)
                 if args.save_wav_file and args.dataset_type == 'waveform':
                     torchaudio.save(file_path.replace('_tensor.pt', '.wav'), waveform, args.sample_rate)
@@ -152,11 +154,20 @@ def get_train_val_test_sets(args):
 
     if args.dataset == 'spotify_sleep_dataset':
         df = pd.read_csv('data/SPD_unique_withClusters.csv')
+        dataset = AudioDataset(df, args)
+    elif args.dataset == 'random':
+        # Generate random data
+        batch_size = args.train_batch_size  # Assuming batch_size is defined in args
+        num_channels = 1 if args.convert_to_mono else 2 
+        length = 2**17  # Fixed length as specified
+        # Randomly generate audio data
+        random_audio_data = torch.randn(batch_size, num_channels, length)
+        # Create a TensorDataset with random audio data and dummy sample rates (if necessary)
+        sample_rate = args.sample_rate
+        dataset = TensorDataset(random_audio_data, torch.full((batch_size,), sample_rate))
+        
     else:
         raise ValueError("Unknown dataset_name")
-
-    logger.info(f'Creating AudioDataset')
-    dataset = AudioDataset(df, args)
 
     logger.info(f'Splitting into train, validation, and test.')
     # Split the dataset into 80% train and 20% temp (to be split further into validation and test)
@@ -183,7 +194,7 @@ def get_dataloaders(args):
     val_loader = DataLoader(val_dataset, batch_size=args.validation_batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=args.validation_batch_size, shuffle=False)
 
-    return train_loader, train_unshuffled_loader, val_loader, test_loader
+    return train_loader, val_loader, test_loader
 
 def preprocess_dataset(dataset):
     return dataset
