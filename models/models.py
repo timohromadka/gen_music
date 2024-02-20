@@ -39,8 +39,38 @@ def get_model(args):
     else:
         raise ValueError(f"Invalid model type: {args.model}. Expected 'diffusion', 'vae', 'gan'.")
 
+
+
+def load_checkpoint(teacher_run_name, args):
+    """
+    Load a model checkpoint from a given checkpoint path.
+    
+    Args:
+    - teacher_run_name (str): Run name of the teacher model.
+    - args: Arguments needed to initialize the model architecture.
+    
+    Returns:
+    - model checkpoint.
+    """
+    logger.info(f'Loading model checkpoint from run name: {teacher_run_name}')
+    
+    teacher_model_path = os.path.join(args.checkpoint_dir, teacher_run_name)
+    
+    if not os.path.exists(teacher_model_path):
+        raise FileNotFoundError(f"Directory not found at {teacher_model_path}")
+
+    checkpoint_files = glob.glob(os.path.join(teacher_model_path, '*.ckpt'))
+    if not checkpoint_files:
+        raise FileNotFoundError(f"No .ckpt files found in {teacher_model_path}")
+
+    checkpoint_path = checkpoint_files[0]
+    checkpoint = torch.load(checkpoint_path)
+    
+    return checkpoint
+
+
   
-def load_model_from_run_name(teacher_run_name, args):
+def load_model_from_run_name(args):
     """
     Load a model from a given checkpoint path.
     
@@ -53,7 +83,7 @@ def load_model_from_run_name(teacher_run_name, args):
     """
     logger.info(f'Loading, configuring, and initializing teacher model from checkpoint using teacher run name: {teacher_run_name}')
     
-    teacher_model_path = os.path.join(args.checkpoint_dir, teacher_run_name)
+    teacher_model_path = os.path.join(args.checkpoint_dir, args.run_name)
     
     if not os.path.exists(teacher_model_path):
         raise FileNotFoundError(f"Directory not found at {teacher_model_path}")
@@ -71,28 +101,23 @@ def load_model_from_run_name(teacher_run_name, args):
 
     if not config:
         raise ValueError(f"No config found in checkpoint at {checkpoint_path}")
-
-    # Determine the model class based on the configuration
-    model_type = config.get('model_type')
-    model_size = config.get('model_size')
-    pretrained_from_github = config.get('pretrained_from_github')
-    pretrained = config.get('pretrained')
     
-    # Create a new copy of args for the teacher model
     teacher_args = copy.deepcopy(args)
-    teacher_args.model_size = model_size
-    teacher_args.pretrained_from_github = pretrained_from_github
-    teacher_args.pretrained = pretrained
+    
+    # dynamically copy all arguments from config to teacher_args
+    # this is needed to ensure we can properly load and use the model for inference correctly
+    for key, value in config.items():
+        setattr(teacher_args, key, value)
 
-    if model_type == "diffusion":
-        model = AudioDiffusionLightningModule
-    elif args.model == 'vae':
-        return AudioVAELightningModule
-    elif args.model == 'gan':
-        return AudioGANLightningModule
+    if teacher_args.model == "diffusion":
+        model_type = AudioDiffusionLightningModule
+    elif teacher_args.model == 'vae':
+        model_type =  AudioVAELightningModule
+    elif teacher_args.model == 'gan':
+        model_type = AudioGANLightningModule
     else:
-        raise ValueError(f"Unsupported model type: {model_type}")
+        raise ValueError(f"Unsupported model type: {teacher_args.model}")
 
-    model = model.load_from_checkpoint(checkpoint_path, args=teacher_args)
+    model = model_type.load_from_checkpoint(checkpoint_path, args=teacher_args)
 
     return model

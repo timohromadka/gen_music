@@ -170,15 +170,16 @@ def get_train_val_test_sets(args):
         raise ValueError("Unknown dataset_name")
 
     logger.info(f'Splitting into train, validation, and test.')
-    # Split the dataset into 80% train and 20% temp (to be split further into validation and test)
+    # Set a fixed seed for reproducible initial split
+    generator = torch.Generator().manual_seed(args.val_split_seed)
+
+    # 80% train, 10% val, 10% test
     train_size = int(0.8 * len(dataset))
     temp_size = len(dataset) - train_size
-    train_dataset, temp_dataset = random_split(dataset, [train_size, temp_size])
-
-    # Split the temp dataset into validation and test (50% each of temp dataset, which is 10% each of the original dataset)
+    train_dataset, temp_dataset = random_split(dataset, [train_size, temp_size], generator=generator)
+    
     val_size = test_size = int(temp_size / 2)
-    local_generator = torch.Generator().manual_seed(args.val_split_seed)
-    val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], generator=local_generator)
+    val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], generator=generator)
 
     logger.info(f'Finished splitting. Train size: {len(train_dataset)}, Validation size: {len(val_dataset)}, Test size: {len(test_dataset)}')
 

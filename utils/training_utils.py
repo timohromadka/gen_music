@@ -60,9 +60,11 @@ def train_model(args, data_module, wandb_logger=None):
     # if we are forcing full epoch training, then don't add early stopping
     if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
         callbacks.append(EarlyStopping(
-            monitor=args.metric_model_selection,
+            #monitor=args.metric_model_selection,
+            monitor="val_loss",
             mode=mode_metric,
             patience=args.patience_early_stopping,
+            verbose=True
         ))
         
         

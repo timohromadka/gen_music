@@ -13,16 +13,17 @@ import pytorch_lightning as pl
 import torch
 from torch.cuda import OutOfMemoryError
 
-from args.args import parser, apply_subset_arguments
-from models.models import DummyModel
+from args.training_args import parser, apply_subset_arguments
+from models.models import DummyModel, load_model_from_run_name
 from utils.wandb_utils import create_wandb_logger
 from utils.dataset_utils import CustomDataModule, get_dataloaders, get_dummy_dataloader
 from utils.training_utils import train_model
+from utils.inference_utils import save_samples, generate_samples
 
 
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('Run Experiment Pipeline for Datamaps!')
+logger = logging.getLogger('Run Experiment Pipeline for Generative Audio Model Training!')
 
 
 def process_results(args):
@@ -47,6 +48,7 @@ def main():
         # SET UP ARGS
         # ================================
         args = parser.parse_args()
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # ================================
         # CONFIGURE WANDB
@@ -56,26 +58,42 @@ def main():
         wandb.init(project=args.wandb_project_name, config=args)
     
         wandb_logger = create_wandb_logger(args, args.wandb_project_name)
-        # wandb.run.name = f"{get_run_name(args)}_{args.suffix_wand_run_name}_{wandb.run.id}"
         wandb.run.name = args.wandb_run_name
         
-        if args.run_dummy_experiment:
-            run_dummy_experiment(wandb_logger)
-        else:
-            # ================================
-            # FETCH DATASET 
-            # ================================
-            train_loader, val_loader, test_loader = get_dataloaders(args)
-            data_module = CustomDataModule(train_loader, val_loader, test_loader)
+        if args.experiment_type == 'training':
+            if args.run_dummy_experiment:
+                run_dummy_experiment(wandb_logger)
+            else:
+                train_loader, val_loader, test_loader = get_dataloaders(args)
+                data_module = CustomDataModule(train_loader, val_loader, test_loader)
+                
+                train_model(
+                    args, data_module, wandb_logger
+                )
+                
+                process_results(args)
+        
+        elif args.experiment_type == 'inference':
+            model, model_args = load_model_from_run_name(args)
             
-            # ================================
-            # UNDERGO TRAINING
-            # ================================
-            train_model(
-                args, data_module, wandb_logger
-            )
+            samples = generate_samples(model, model_args, args, device)
+            save_path = f"data/{args.run_name}/generated_samples/"
+            save_samples(samples, save_path)
+
+            print(f"Generated and saved {args.num_samples} samples to {save_path}")
             
-            process_results(args)
+        elif args.experiment_type == 'evaluation':
+            model, model_args = load_model_from_run_name(args)
+            
+            samples_dir = f"data/{args.run_name}/generated_samples/"
+            samples = load_samples(samples_dir)
+            results = evaluate_metrics(samples, args.metrics)
+            
+            for metric, value in results.items():
+            print(f"{metric}: {value}")
+
+    for metric, value in results.items():
+        print(f"{metric}: {value}")
             
         # ================================
         # FINISH

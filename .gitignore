@@ -166,6 +166,7 @@ data/
 # wandb logs and experiments
 wandb/
 th716_mphil_project/
+model_checkpoints/
 
 # artifact files
 *.wav

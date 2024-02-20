@@ -68,7 +68,8 @@ class AudioDiffusionLightningModule(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         audio, _ = batch
         loss = self.model(audio) # loss calculation handled in Diffusion object's forward method
-        self.log('train_loss', loss, on_step=self.on_step, on_epoch=self.on_epoch, prog_bar=True, logger=True)
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log('train_loss_step', loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
         return loss
         
     # def on_validation_epoch_end(self, outputs):
@@ -78,7 +79,7 @@ class AudioDiffusionLightningModule(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         audio, _ = batch
         loss = self.model(audio)
-        self.log('val_loss', loss, on_step=self.on_step, on_epoch=self.on_epoch, prog_bar=True, logger=True)
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
         return {'val_loss': loss}
         # Optionally perform sampling here and log or save samples
         # sample = self.model.sample(audio, num_steps=10)
@@ -92,7 +93,8 @@ class AudioDiffusionLightningModule(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         audio, _ = batch
         loss = self.model(audio)
-        self.log('test_loss', loss, on_step=self.on_step, on_epoch=self.on_epoch, prog_bar=True, logger=True)
+        self.log('test_loss', loss, on_epoch=True, prog_bar=True, logger=True)
+        # self.log('test_loss', loss, on_step=self.on_step, on_epoch=self.on_epoch, prog_bar=True, logger=True)
         # Additional test metrics or operations can go here
         return {'test_loss': loss}
 

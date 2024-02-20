@@ -5,7 +5,13 @@ from datetime import datetime
 
 parser = argparse.ArgumentParser(description='Training Dynamics Guided Knowledge Distillation.')
 
+# Debugging
 parser.add_argument('--run_dummy_experiment', required=False, action='store_true', help='If True, will run a dummy experiment (for wandb testing).')
+
+# Experimental Procedure
+parser.add_argument('--experiment_type', type=str, required=True, default='training', choices=['training', 'inference', 'evaluation'])
+
+# Inference
 
 # Dataset
 parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])

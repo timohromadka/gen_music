@@ -16,10 +16,14 @@
                 "--dataset", "spotify_sleep_dataset",
                 "--dataset_type", "waveform", // "waveform", "mel-spectrogram"
                 "--model", "diffusion",
+                "--model_size", "tiny",
                 "--n_samples", "100",
+                "--val_check_interval", "2",
+                "--max_steps", "5",
                 "--convert_to_mono",
+                "--train_batch_size", "2",
                 "--sample_rate", "44100",
-                "--disable_wandb",
+                // "--disable_wandb",
                 // "--run_dummy_experiment"
             ],
             "env": {
