@@ -80,12 +80,14 @@ def train_model(args, data_module, wandb_logger=None):
         "log_every_n_steps": args.logging_interval,
         "val_check_interval": args.val_check_interval,
         "callbacks": callbacks,
-        "accelerator": args.accelerator,
-        "devices": args.num_gpus,
         "precision": args.precision,
         "detect_anomaly": False,
         "overfit_batches": args.overfit_batches,
         "deterministic": args.deterministic,
+        
+        # Advanced Training Setup
+        "accelerator": args.accelerator,
+        "devices": args.num_gpus,
     }
 
     # Dynamically set max_epochs or max_steps based on the condition
