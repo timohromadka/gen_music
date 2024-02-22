@@ -3,7 +3,7 @@ from datetime import datetime
 
 # ======================================
 
-parser = argparse.ArgumentParser(description='Training Dynamics Guided Knowledge Distillation.')
+parser = argparse.ArgumentParser(description='Arguments for Training and Sampling of Generative Audio Models.')
 
 # Debugging
 parser.add_argument('--run_dummy_experiment', required=False, action='store_true', help='If True, will run a dummy experiment (for wandb testing).')
@@ -12,6 +12,11 @@ parser.add_argument('--run_dummy_experiment', required=False, action='store_true
 parser.add_argument('--experiment_type', type=str, required=True, default='training', choices=['training', 'inference', 'evaluation'])
 
 # Inference
+parser.add_argument("--num_samples", type=int, default=100, help="Number of samples to generate")
+parser.add_argument("--num_steps", type=int, default=100, help="Number of steps to sample for.")
+
+# Evaluation
+parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Inception Score', 'Kullback-Leibler'], help="Metrics for evaluation")
 
 # Dataset
 parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])

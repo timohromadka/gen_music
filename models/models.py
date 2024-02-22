@@ -120,4 +120,4 @@ def load_model_from_run_name(args):
 
     model = model_type.load_from_checkpoint(checkpoint_path, args=teacher_args)
 
-    return model
+    return model, teacher_args

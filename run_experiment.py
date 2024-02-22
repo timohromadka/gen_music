@@ -19,6 +19,7 @@ from utils.wandb_utils import create_wandb_logger
 from utils.dataset_utils import CustomDataModule, get_dataloaders, get_dummy_dataloader
 from utils.training_utils import train_model
 from utils.inference_utils import save_samples, generate_samples
+from utils.evaluation_utils import load_samples, evaluate_metrics
 
 
 
@@ -67,9 +68,7 @@ def main():
                 train_loader, val_loader, test_loader = get_dataloaders(args)
                 data_module = CustomDataModule(train_loader, val_loader, test_loader)
                 
-                train_model(
-                    args, data_module, wandb_logger
-                )
+                train_model(args, data_module, wandb_logger)
                 
                 process_results(args)
         
@@ -90,10 +89,7 @@ def main():
             results = evaluate_metrics(samples, args.metrics)
             
             for metric, value in results.items():
-            print(f"{metric}: {value}")
-
-    for metric, value in results.items():
-        print(f"{metric}: {value}")
+                print(f"{metric}: {value}")
             
         # ================================
         # FINISH
