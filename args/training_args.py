@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description='Arguments for Training and Samplin
 parser.add_argument('--run_dummy_experiment', required=False, action='store_true', help='If True, will run a dummy experiment (for wandb testing).')
 
 # Experimental Procedure
-parser.add_argument('--experiment_type', type=str, required=True, default='training', choices=['training', 'inference', 'evaluation'])
+parser.add_argument('--experiment_type', type=str, required=True, default='training', choices=['training', 'inference', 'evaluation', 'data_loading'])
 
 # Inference
 parser.add_argument("--num_samples", type=int, default=100, help="Number of samples to generate")
@@ -17,6 +17,7 @@ parser.add_argument("--num_steps", type=int, default=100, help="Number of steps 
 
 # Evaluation
 parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Inception Score', 'Kullback-Leibler'], help="Metrics for evaluation")
+parser.add_argument('--path_to_original_dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
 
 # Dataset
 parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
@@ -39,6 +40,7 @@ parser.add_argument('--convert_to_mono', action='store_true', help='Whether to c
 
 # Training Configuration
 parser.add_argument('--epochs', type=int, help='Maximum number of epochs for training.')
+parser.add_argument('--min_steps', type=int, help='Minimum number of steps to train for before early stopping can occur (then monitored by patience_early_stopping).')
 parser.add_argument('--train_by_epochs', action='store_true', help='If True, training will be done on a per-epoch basis (as defined by epochs). If false, training will be done on a per-step basis (as defined by max_steps).')
 parser.add_argument('--max_steps', type=int, default=1000, help='Maximum number of training steps (batches) for training.')
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for the optimizer.')

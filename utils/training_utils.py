@@ -20,6 +20,20 @@ sys.path.append("..")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('utils/trainer_utils.py')
 
+
+class ConditionalEarlyStopping(EarlyStopping):
+    def __init__(self, min_steps=500, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.min_steps = min_steps
+
+    def _run_early_stopping_check(self, trainer, pl_module):
+        # Check if the current step is less than the minimum required steps
+        if trainer.global_step < self.min_steps:
+            return
+        # If the current step is beyond min_steps, proceed with the normal early stopping check
+        super()._run_early_stopping_check(trainer, pl_module)
+        
+
 def train_model(args, data_module, wandb_logger=None):
     """
     Return 
@@ -58,15 +72,24 @@ def train_model(args, data_module, wandb_logger=None):
 
         
     # if we are forcing full epoch training, then don't add early stopping
+    # if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
+    #     callbacks.append(EarlyStopping(
+    #         #monitor=args.metric_model_selection,
+    #         monitor="val_loss",
+    #         mode=mode_metric,
+    #         patience=args.patience_early_stopping,
+    #         verbose=True
+    #     ))
+    
     if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
-        callbacks.append(EarlyStopping(
-            #monitor=args.metric_model_selection,
+        callbacks.append(ConditionalEarlyStopping(
+            min_steps=500,  # Only start considering early stopping after 500 steps
             monitor="val_loss",
             mode=mode_metric,
             patience=args.patience_early_stopping,
             verbose=True
         ))
-        
+            
         
     callbacks.append(LearningRateMonitor(logging_interval='epoch'))
 
