@@ -16,7 +16,7 @@ parser.add_argument("--num_batches_to_generate", type=int, default=100, help="Nu
 parser.add_argument("--num_steps", type=int, default=100, help="Number of steps to sample for.")
 parser.add_argument("--run_name_to_load", type=str, help="Specify the run_name, used for loading a model, or fetching a models arguments.")
 parser.add_argument('--inference_batch_size', type=int, default=8, help='Batch size for inference.')
-parser.add_argument("--run_name_to_load", type=str, help="Specify the run_name, used for loading a model, or fetching a models arguments.")
+parser.add_argument('--generated_samples_dir', type=str, default='model_checkpoints', help='Name of parent directory where to store generated samples.')
 
 # Evaluation
 parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Inception Score', 'Kullback-Leibler'], help="Metrics for evaluation")

@@ -68,11 +68,11 @@ class AudioDataset(Dataset):
         os.makedirs(self.cache_dir, exist_ok=True)
         cache_file = os.path.join(self.cache_dir, f"{self.dataset_type}_data.pth")
 
-        if os.path.exists(cache_file):
-            self.data_paths = torch.load(cache_file)
-        else:
-            self.data_paths = preprocess_and_cache_dataset(df, args)
-            torch.save(self.data_paths, cache_file)
+        # if os.path.exists(cache_file):
+        #     self.data_paths = torch.load(cache_file)
+        # else:
+        self.data_paths = preprocess_and_cache_dataset(df, args)
+        torch.save(self.data_paths, cache_file)
 
     def __len__(self):
         return len(self.data_paths)
@@ -106,7 +106,7 @@ def filter_df(df, n_samples=None):
 def preprocess_and_cache_dataset(df, args):
     logger.info(f'df.shape is: {df.shape}')
     logger.info(f'Filtering df')
-    df = filter_df(df, args.n_samples)
+    df = filter_df(df, args.num_samples_for_train)
     logger.info(f'Done! df.shape is: {df.shape}.')
 
     processed_data = []

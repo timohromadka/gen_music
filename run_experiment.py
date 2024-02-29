@@ -73,6 +73,9 @@ def main():
                 train_model(args, data_module, wandb_logger)
                 
                 process_results(args)
+                
+        # TODO, WHY IS DATAA NOT LOADING?I IT SHOULD BE LOADING 1000 data points!!!
+        # what should the size of my architecture be???
         
         elif args.experiment_type == 'inference':
             model, model_args = load_model_from_run_name(args)
@@ -83,7 +86,7 @@ def main():
             
             generate_samples(model, model_args, args, device, samples_save_dir)
 
-            print(f"Generated and saved {args.num_samples} samples to {samples_save_dir}")
+            print(f"Generated and saved {args.num_batches_to_generate * args.inference_batch_size} samples to {samples_save_dir}")
             
         elif args.experiment_type == 'evaluation':
             model, model_args = load_model_from_run_name(args)
