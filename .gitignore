@@ -168,6 +168,9 @@ wandb/
 th716_mphil_project/
 model_checkpoints/
 
+# vscode files
+.vscode/
+
 # artifact files
 *.wav
 *.mp3
