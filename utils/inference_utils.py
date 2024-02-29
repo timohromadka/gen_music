@@ -4,15 +4,32 @@ import torch
 from pathlib import Path
 from audio_diffusion_pytorch import DiffusionModel, UNetV0, VDiffusion, VSampler
 
-def generate_samples(model, model_args, experiment_args, device):
+from tqdm import tqdm
+
+from .dataset_utils import get_trimmed_waveform, calculate_waveform_length
+
+def generate_samples(model, model_args, experiment_args, device, samples_save_dir):
     model.eval()
-    samples = []
-    with torch.no_grad():
-        for _ in range(experiment_args.num_samples):
-            noise = torch.randn(1, 2, model_args.sample_length).to(device)
-            sample = model.sample(noise, num_steps=experiment_args.num_steps)
-            samples.append(sample)
-    return samples
+    
+    waveform_length = calculate_waveform_length(model_args.sample_length, model_args.sample_rate)
+    if model_args.model == 'diffusion':
+        with torch.no_grad():
+            for i in tqdm(range(experiment_args.num_batches_to_generate), desc='generating samples'):
+                noise = torch.randn(experiment_args.inference_batch_size, model_args.num_channels, waveform_length).to(device)
+                batch_samples = model.sample(noise, experiment_args.num_steps)
+                
+                for j, sample in enumerate(batch_samples):
+                    sample_file_path = os.path.join(samples_save_dir, f'sample_{i*experiment_args.inference_batch_size+j}.pt')
+                    torch.save(sample.cpu(), sample_file_path)
+        
+    elif model_args.model == 'vae':
+        # Implement VAE sampling and saving logic here
+        pass
+    
+    elif model_args.model == 'gan':
+        # Implement GAN sampling and saving logic here
+        pass
+    
 
 def save_samples(samples, save_path):
     os.makedirs(save_path, exist_ok=True)

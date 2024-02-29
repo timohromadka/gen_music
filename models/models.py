@@ -81,9 +81,9 @@ def load_model_from_run_name(args):
     Returns:
     - Loaded model.
     """
-    logger.info(f'Loading, configuring, and initializing teacher model from checkpoint using teacher run name: {teacher_run_name}')
+    logger.info(f'Loading, configuring, and initializing teacher model from checkpoint using run name: {args.run_name_to_load}')
     
-    teacher_model_path = os.path.join(args.checkpoint_dir, args.run_name)
+    teacher_model_path = os.path.join(args.checkpoint_dir, args.run_name_to_load)
     
     if not os.path.exists(teacher_model_path):
         raise FileNotFoundError(f"Directory not found at {teacher_model_path}")
@@ -96,28 +96,29 @@ def load_model_from_run_name(args):
     checkpoint_path = checkpoint_files[0]
 
     # Load the checkpoint to access the configuration
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=torch.device('cpu'))
     config = checkpoint.get('config')
+    config_dict = vars(config)
 
     if not config:
         raise ValueError(f"No config found in checkpoint at {checkpoint_path}")
     
-    teacher_args = copy.deepcopy(args)
+    model_args = copy.deepcopy(args)
     
     # dynamically copy all arguments from config to teacher_args
     # this is needed to ensure we can properly load and use the model for inference correctly
-    for key, value in config.items():
-        setattr(teacher_args, key, value)
+    for key, value in vars(config).items():
+        setattr(model_args, key, value)
 
-    if teacher_args.model == "diffusion":
+    if model_args.model == "diffusion":
         model_type = AudioDiffusionLightningModule
-    elif teacher_args.model == 'vae':
+    elif model_args.model == 'vae':
         model_type =  AudioVAELightningModule
-    elif teacher_args.model == 'gan':
+    elif model_args.model == 'gan':
         model_type = AudioGANLightningModule
     else:
-        raise ValueError(f"Unsupported model type: {teacher_args.model}")
+        raise ValueError(f"Unsupported model type: {model_args.model}")
 
-    model = model_type.load_from_checkpoint(checkpoint_path, args=teacher_args)
+    model = model_type.load_from_checkpoint(checkpoint_path, args=model_args)
 
-    return model, teacher_args
+    return model, model_args

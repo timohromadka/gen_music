@@ -1,6 +1,7 @@
 import glob
 import logging
 from io import BytesIO
+import numpy as np
 import os
 import pandas as pd
 import requests
@@ -31,6 +32,30 @@ def get_mel_spectrogram(waveform, sample_rate, n_mels):
     mel_spectrogram = MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)(waveform)
     return mel_spectrogram
 
+def calculate_waveform_length(sample_length, sample_rate):
+    return sample_length * sample_rate
+
+def get_trimmed_waveform(waveform, sample_rate, sample_length, trim_area='random'):
+    total_samples = waveform.shape[1]
+    num_samples_to_trim = sample_length * sample_rate
+
+    if total_samples <= num_samples_to_trim:
+        return waveform
+
+    if trim_area == 'start':
+        trimmed_waveform = waveform[:, :num_samples_to_trim]
+    elif trim_area == 'random':
+        max_start_point = total_samples - num_samples_to_trim
+        start_point = np.random.randint(0, max_start_point)
+        trimmed_waveform = waveform[:, start_point:start_point + num_samples_to_trim]
+    elif trim_area == 'end':
+        trimmed_waveform = waveform[:, -num_samples_to_trim:]
+    else:
+        raise ValueError("trim_area must be 'start', 'random', or 'end'")
+
+    return trimmed_waveform
+    
+
 
 
 class AudioDataset(Dataset):
@@ -38,6 +63,7 @@ class AudioDataset(Dataset):
         self.dataset_type = args.dataset_type
         self.cache_dir = os.path.join(args.cache_dir, args.dataset, self.dataset_type)
         self.sample_rate = args.sample_rate
+        self.trim_area = args.trim_area
         self.sample_length = SAMPLE_LENGTH[args.dataset] if not args.sample_length else args.sample_length
         os.makedirs(self.cache_dir, exist_ok=True)
         cache_file = os.path.join(self.cache_dir, f"{self.dataset_type}_data.pth")
@@ -55,10 +81,8 @@ class AudioDataset(Dataset):
         file_path = self.data_paths[idx]
         if os.path.exists(file_path):
             waveform, sample_rate = torch.load(file_path)
-            # Ensure the waveform is of the expected size, trim if necessary
-            # This is due to some artifacts of the waveforms having an extra element
-            expected_size = self.sample_length * self.sample_rate # seconds * sample_rate
-            waveform = waveform[:, :expected_size]
+            # Trim the waveform as necessary using the get_trimmed_waveform function
+            waveform = get_trimmed_waveform(waveform, sample_rate, self.sample_length, trim_area=self.trim_area)
             return waveform, sample_rate
         else:
             logger.error(f'File not found: {file_path}')
@@ -66,11 +90,16 @@ class AudioDataset(Dataset):
 
 
 
-def filter_df(df, n_samples):
+def filter_df(df, n_samples=None):
     if n_samples:
         df = df[:n_samples]
     df = df[df['SampleURL'].notna()]
     df = df.drop_duplicates(subset='TrackID', keep='first')
+    
+    excluded_genres = ['punk', 'funk', 'alternative', 'metal', 'electronic', 'house', 'r&b', 'rock', 'rap', 'pop', 'hip hop']
+    pattern = '|'.join([f'(?i){genre}' for genre in excluded_genres])  # The (?i) makes the regex case-insensitive
+    df = df[~df['Genres'].str.contains(pattern, na=False)]
+    
     return df
 
 
@@ -83,16 +112,15 @@ def preprocess_and_cache_dataset(df, args):
     processed_data = []
     
     # define constants
-    file_extension = '.wav'
+    file_extension = '.pt'
     
     # check if data has already been cached!
     for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc='Fetching audio samples, performing necessary conversions, and caching.'):
         # Construct the file paths with dataset and data type subdirectories
         url = row['SampleURL']
         # print(f'Now fetching url: {url}')
-        file_name = f"{idx}{file_extension}"
-        file_path = os.path.join(args.cache_dir, args.dataset, args.dataset_type, file_name)
-        tensor_path = file_path.replace(file_extension, '_tensor.pt')  # Path for saving tensor if necessary
+        file_path = os.path.join(args.cache_dir, args.dataset, args.dataset_type, f"{idx}{file_extension}")
+        # tensor_path = file_path.replace(file_extension, '_tensor.pt')  # Path for saving tensor if necessary
 
         # Ensure the subdirectory exists
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -103,8 +131,11 @@ def preprocess_and_cache_dataset(df, args):
                 waveform, sample_rate = torchaudio.load(BytesIO(response.content))
 
                 # Resample and convert to mono if required
-                if args.convert_to_mono and waveform.size(0) > 1:
-                    waveform = torch.mean(waveform, dim=0, keepdim=True)
+                if args.num_channels == 1:
+                    if waveform.size(0) > 1:
+                        waveform = torch.mean(waveform, dim=0, keepdim=True)
+                    else:
+                        raise ValueError("Cannot convert waveform to 2 channels since it only has 1 channel.")
                     
                 # TODO
                 # Make sure this is actually doing what we believe its doing!????
@@ -118,16 +149,18 @@ def preprocess_and_cache_dataset(df, args):
                     waveform = get_mel_spectrogram(waveform, sample_rate, args.n_mels)
 
                 # save as a .pt tensor
-                torch.save((waveform, args.sample_rate), tensor_path)
-                # ...and then as a .wav file (optional)
-                if args.save_wav_file and args.dataset_type == 'waveform':
-                    torchaudio.save(file_path.replace('_tensor.pt', '.wav'), waveform, args.sample_rate)
-                file_path = tensor_path  # Update file_path to point to the tensor file
+                torch.save((waveform, args.sample_rate), file_path)
 
             else:
                 logger.error(f'Failed to download from url: {url}')
                 continue
         processed_data.append(file_path)
+        # ...and then as a .wav file (optional)
+        
+        wav_path = file_path.replace('.pt', '.wav')
+        if not os.path.exists(wav_path):
+            if args.save_wav_file and args.dataset_type == 'waveform':
+                torchaudio.save(wav_path, waveform, args.sample_rate)
 
     return processed_data
 
@@ -158,7 +191,7 @@ def get_train_val_test_sets(args):
     elif args.dataset == 'random':
         # Generate random data
         batch_size = args.train_batch_size  # Assuming batch_size is defined in args
-        num_channels = 1 if args.convert_to_mono else 2 
+        num_channels = args.num_channels
         length = 2**17  # Fixed length as specified
         # Randomly generate audio data
         random_audio_data = torch.randn(batch_size, num_channels, length)

@@ -49,7 +49,7 @@ class AudioDiffusionLightningModule(pl.LightningModule):
 
         self.model = DiffusionModel(
             net_t=UNetV0,
-            in_channels=1 if args.convert_to_mono else 2,
+            in_channels=args.num_channels,
             channels=channels,
             factors=factors,
             items=items,
@@ -108,3 +108,13 @@ class AudioDiffusionLightningModule(pl.LightningModule):
             raise ValueError("Unsupported optimizer type")
 
         return optimizer
+    
+    def on_save_checkpoint(self, checkpoint):
+        checkpoint['config'] = self.args  # Assuming you've attached config to the model as self.config
+        return checkpoint
+
+    def on_load_checkpoint(self, checkpoint):
+        self.config = checkpoint.get('config', None)  # Safely retrieve the config
+        
+    def sample(self, noise, num_steps):
+        return self.model.sample(noise, num_steps=num_steps)

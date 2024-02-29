@@ -12,8 +12,11 @@ parser.add_argument('--run_dummy_experiment', required=False, action='store_true
 parser.add_argument('--experiment_type', type=str, required=True, default='training', choices=['training', 'inference', 'evaluation', 'data_loading'])
 
 # Inference
-parser.add_argument("--num_samples", type=int, default=100, help="Number of samples to generate")
+parser.add_argument("--num_batches_to_generate", type=int, default=100, help="Number of samples to generate")
 parser.add_argument("--num_steps", type=int, default=100, help="Number of steps to sample for.")
+parser.add_argument("--run_name_to_load", type=str, help="Specify the run_name, used for loading a model, or fetching a models arguments.")
+parser.add_argument('--inference_batch_size', type=int, default=8, help='Batch size for inference.')
+parser.add_argument("--run_name_to_load", type=str, help="Specify the run_name, used for loading a model, or fetching a models arguments.")
 
 # Evaluation
 parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Inception Score', 'Kullback-Leibler'], help="Metrics for evaluation")
@@ -22,8 +25,10 @@ parser.add_argument('--path_to_original_dataset', type=str, required=False, defa
 # Dataset
 parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
 parser.add_argument('--save_wav_file', required=False, action='store_true', help='If True, will save .wav files (waveform) for each data point in addition to .pt files.')
-parser.add_argument('--n_samples', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
-parser.add_argument('--sample_length', required=False, type=int, default=0, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used..')
+parser.add_argument('--num_samples_for_train', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
+parser.add_argument('--sample_length', required=False, type=int, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used.')
+parser.add_argument('--trim_area', required=False, type=str, default='random', help='Specify where the audio trimming should happen. Choices are [random, start, end], default is random.')
+
 
 # Model 
 parser.add_argument('--model', type=str, required=True, choices=['diffusion', 'vae', 'gan'])
@@ -35,7 +40,7 @@ parser.add_argument('--sample_rate', type=int, default=24000)
 parser.add_argument('--dataset_type', type=str, default='waveform', choices=['waveform', 'spectrogram', 'mel-spectrogram'])
 parser.add_argument('--n_fft', type=int, default=400, help='Number of Fast Fourier Transform (FFT) points used for analyzing the audio signal. Basically, how many bins are we using to represent frequency spectrum?')
 parser.add_argument('--n_mels', type=int, default=128, help='The number of Mel bands to generate in the Mel spectrogram. This controls the frequency resolution of the Mel spectrogram. Typically, a larger number of Mel bands provides finer frequency resolution. A common default value is 128, but this can be adjusted based on specific audio analysis requirements or computational constraints.')
-parser.add_argument('--convert_to_mono', action='store_true', help='Whether to convert audio samples into monophonic audio (1 channel).')
+parser.add_argument('--num_channels', type=int, help='Number of channels the audio waveform should have.')
 
 
 # Training Configuration

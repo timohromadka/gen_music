@@ -48,6 +48,7 @@ def train_model(args, data_module, wandb_logger=None):
     pl.seed_everything(args.seed, workers=True)
     
     model = get_model(args)
+    model.config = args
     mode_metric = 'max' if 'accuracy' in args.metric_model_selection else 'min'
     # ========================
     # log useful model info
@@ -72,23 +73,23 @@ def train_model(args, data_module, wandb_logger=None):
 
         
     # if we are forcing full epoch training, then don't add early stopping
-    # if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
-    #     callbacks.append(EarlyStopping(
-    #         #monitor=args.metric_model_selection,
-    #         monitor="val_loss",
-    #         mode=mode_metric,
-    #         patience=args.patience_early_stopping,
-    #         verbose=True
-    #     ))
-    
     if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
-        callbacks.append(ConditionalEarlyStopping(
-            min_steps=500,  # Only start considering early stopping after 500 steps
+        callbacks.append(EarlyStopping(
+            #monitor=args.metric_model_selection,
             monitor="val_loss",
             mode=mode_metric,
             patience=args.patience_early_stopping,
             verbose=True
         ))
+    
+    # if args.patience_early_stopping and not args.train_on_full_data and not args.force_full_epoch_training:
+    #     callbacks.append(ConditionalEarlyStopping(
+    #         min_steps=500,  # Only start considering early stopping after 500 steps
+    #         monitor="val_loss",
+    #         mode=mode_metric,
+    #         patience=args.patience_early_stopping,
+    #         verbose=True
+    #     ))
             
         
     callbacks.append(LearningRateMonitor(logging_interval='epoch'))
@@ -125,7 +126,7 @@ def train_model(args, data_module, wandb_logger=None):
     if not args.test_only:
         trainer.fit(model, data_module)
     
-    trainer.test(model, dataloaders=data_module.test_dataloader())
+    # trainer.test(model, dataloaders=data_module.test_dataloader())
 
 
 def get_model_info(model):

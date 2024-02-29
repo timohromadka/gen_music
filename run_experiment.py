@@ -22,7 +22,6 @@ from utils.inference_utils import save_samples, generate_samples
 from utils.evaluation_utils import load_samples, evaluate_metrics
 
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Run Experiment Pipeline for Generative Audio Model Training!')
 
@@ -61,7 +60,10 @@ def main():
         wandb_logger = create_wandb_logger(args, args.wandb_project_name)
         wandb.run.name = args.wandb_run_name
         
-        if args.experiment_type == 'training':
+        if args.experiment_type == 'data_loading':
+            train_loader, val_loader, test_loader = get_dataloaders(args)
+        
+        elif args.experiment_type == 'training':
             if args.run_dummy_experiment:
                 run_dummy_experiment(wandb_logger)
             else:
@@ -75,21 +77,24 @@ def main():
         elif args.experiment_type == 'inference':
             model, model_args = load_model_from_run_name(args)
             
-            samples = generate_samples(model, model_args, args, device)
-            save_path = f"data/{args.run_name}/generated_samples/"
-            save_samples(samples, save_path)
+            assert args.run_name_to_load == model_args.wandb_run_name
+            samples_save_dir = os.path.join(args.generated_samples_dir, args.run_name_to_load, 'samples')
+            os.makedirs(samples_save_dir, exist_ok=True)
+            
+            generate_samples(model, model_args, args, device, samples_save_dir)
 
-            print(f"Generated and saved {args.num_samples} samples to {save_path}")
+            print(f"Generated and saved {args.num_samples} samples to {samples_save_dir}")
             
         elif args.experiment_type == 'evaluation':
             model, model_args = load_model_from_run_name(args)
             
             samples_dir = f"data/{args.run_name}/generated_samples/"
-            samples = load_samples(samples_dir)
-            results = evaluate_metrics(samples, args.metrics)
+            original_dataset_dir = args.path_to_original_dataset
+            results = evaluate_metrics(args, samples_dir, original_dataset_dir)
             
             for metric, value in results.items():
-                print(f"{metric}: {value}")
+                logger.info(f"{metric}: {value}")
+                wandb.log({metric: value})
             
         # ================================
         # FINISH
