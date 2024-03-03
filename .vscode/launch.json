@@ -13,17 +13,28 @@
             "justMyCode": true,
             "python": "/home/timoh/anaconda3/envs/GEN_MUSIC/bin/python",
             "args": [
+                "--experiment_type", "training",
+                "--run_name_to_load", "run_20240229_204802",
+
+                // "--experiment_type", "training",
+
+                "--save_wav_file",
                 "--dataset", "spotify_sleep_dataset",
                 "--dataset_type", "waveform", // "waveform", "mel-spectrogram"
                 "--model", "diffusion",
                 "--model_size", "tiny",
-                "--n_samples", "100",
-                "--val_check_interval", "2",
-                "--max_steps", "5",
-                "--convert_to_mono",
-                "--train_batch_size", "2",
-                "--sample_rate", "44100",
+                "--sample_length", "4",
+                "--trim_area", "random",
+                "--num_samples_for_train", "1000",
+                "--val_check_interval", "20",
+                "--max_steps", "500",
+                "--num_channels", "1",
+                "--train_batch_size", "8",
+                "--sample_rate", "22048", // "44100",
+                "--patience_early_stopping", "10",
                 // "--disable_wandb",
+                "--num_batches_to_generate", "2",
+                "--inference_batch_size", "2"
                 // "--run_dummy_experiment"
             ],
             "env": {
