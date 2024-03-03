@@ -57,9 +57,11 @@ print(f'Calculated sample. \n\n')
 print_memory_usage()
 print('done with sample')
 
-sample = sample.squeeze(0)  # Assuming batch size of 1, adjust accordingly
+print(sample.shape)
+
 
 # Save the audio sample
 # You might need to adjust the sample_rate according to your specific use case
 sample_rate = 44100  # Example sample rate, adjust as needed
-torchaudio.save('generated_audio_2.wav', sample.cpu(), sample_rate)
+for i in range(sample.size(0)):  # sample.size(0) gives the batch size, which is 8 in your case
+    torchaudio.save(f'generated_audio_{i}.wav', sample[i].cpu(), sample_rate)
