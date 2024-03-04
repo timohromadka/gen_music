@@ -13,7 +13,7 @@ parser.add_argument('--experiment_type', type=str, required=True, default='train
 
 # Inference
 parser.add_argument("--num_batches_to_generate", type=int, default=100, help="Number of samples to generate")
-parser.add_argument("--num_steps", type=int, default=100, help="Number of steps to sample for.")
+parser.add_argument("--num_steps_for_inference", type=int, default=100, help="Number of steps to sample for.")
 parser.add_argument("--run_name_to_load", type=str, help="Specify the run_name, used for loading a model, or fetching a models arguments.")
 parser.add_argument('--inference_batch_size', type=int, default=8, help='Batch size for inference.')
 parser.add_argument('--generated_samples_dir', type=str, default='model_checkpoints', help='Name of parent directory where to store generated samples.')
@@ -23,7 +23,7 @@ parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Incept
 parser.add_argument('--path_to_original_dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
 
 # Dataset
-parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
+parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'musiccaps', 'random'])
 parser.add_argument('--save_wav_file', required=False, action='store_true', help='If True, will save .wav files (waveform) for each data point in addition to .pt files.')
 parser.add_argument('--num_samples_for_train', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
 parser.add_argument('--sample_length', required=False, type=int, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used.')
