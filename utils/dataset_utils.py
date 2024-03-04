@@ -18,6 +18,8 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split, Dataset, TensorDataset
 from pytorch_lightning import LightningDataModule
 
+from utils.musiccaps_utils import preprocess_and_cache_musiccaps_dataset
+from utils.spotifysleepdataset_utils import preprocess_and_cache_spotifysleep_dataset
 from utils.constants import SAMPLE_LENGTH
 
 logging.basicConfig(level=logging.INFO)
@@ -59,20 +61,16 @@ def get_trimmed_waveform(waveform, sample_rate, sample_length, trim_area='random
 
 
 class AudioDataset(Dataset):
-    def __init__(self, df, args):
+    def __init__(self, args):
         self.dataset_type = args.dataset_type
         self.cache_dir = os.path.join(args.cache_dir, args.dataset, self.dataset_type)
         self.sample_rate = args.sample_rate
         self.trim_area = args.trim_area
         self.sample_length = SAMPLE_LENGTH[args.dataset] if not args.sample_length else args.sample_length
+        
         os.makedirs(self.cache_dir, exist_ok=True)
-        cache_file = os.path.join(self.cache_dir, f"{self.dataset_type}_data.pth")
 
-        # if os.path.exists(cache_file):
-        #     self.data_paths = torch.load(cache_file)
-        # else:
-        self.data_paths = preprocess_and_cache_dataset(df, args)
-        torch.save(self.data_paths, cache_file)
+        self.data_paths = self.preprocess_and_cache_dataset(args, self.cache_dir)
 
     def __len__(self):
         return len(self.data_paths)
@@ -87,83 +85,15 @@ class AudioDataset(Dataset):
         else:
             logger.error(f'File not found: {file_path}')
             return None, None
-
-
-
-def filter_df(df, n_samples=None):
-    if n_samples:
-        df = df[:n_samples]
-    df = df[df['SampleURL'].notna()]
-    df = df.drop_duplicates(subset='TrackID', keep='first')
-    
-    excluded_genres = ['punk', 'funk', 'alternative', 'metal', 'electronic', 'house', 'r&b', 'rock', 'rap', 'pop', 'hip hop']
-    pattern = '|'.join([f'(?i){genre}' for genre in excluded_genres])  # The (?i) makes the regex case-insensitive
-    df = df[~df['Genres'].str.contains(pattern, na=False)]
-    
-    return df
-
-
-def preprocess_and_cache_dataset(df, args):
-    logger.info(f'df.shape is: {df.shape}')
-    logger.info(f'Filtering df')
-    df = filter_df(df, args.num_samples_for_train)
-    logger.info(f'Done! df.shape is: {df.shape}.')
-
-    processed_data = []
-    
-    # define constants
-    file_extension = '.pt'
-    
-    # check if data has already been cached!
-    for idx, row in tqdm(df.iterrows(), total=df.shape[0], desc='Fetching audio samples, performing necessary conversions, and caching.'):
-        # Construct the file paths with dataset and data type subdirectories
-        url = row['SampleURL']
-        # print(f'Now fetching url: {url}')
-        file_path = os.path.join(args.cache_dir, args.dataset, args.dataset_type, f"{idx}{file_extension}")
-        # tensor_path = file_path.replace(file_extension, '_tensor.pt')  # Path for saving tensor if necessary
-
-        # Ensure the subdirectory exists
-        os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
-        if not os.path.exists(file_path):
-            response = requests.get(url)
-            if response.status_code == 200:
-                waveform, sample_rate = torchaudio.load(BytesIO(response.content))
-
-                # Resample and convert to mono if required
-                if args.num_channels == 1:
-                    if waveform.size(0) > 1:
-                        waveform = torch.mean(waveform, dim=0, keepdim=True)
-                    else:
-                        raise ValueError("Cannot convert waveform to 2 channels since it only has 1 channel.")
-                    
-                # TODO
-                # Make sure this is actually doing what we believe its doing!????
-                if sample_rate != args.sample_rate:
-                    resampler = Resample(orig_freq=sample_rate, new_freq=args.sample_rate)
-                    waveform = resampler(waveform)
-
-                if args.dataset_type == 'spectrogram':
-                    waveform = get_spectrogram(waveform)
-                elif args.dataset_type == 'mel-spectrogram':
-                    waveform = get_mel_spectrogram(waveform, sample_rate, args.n_mels)
-
-                # save as a .pt tensor
-                torch.save((waveform, args.sample_rate), file_path)
-
-            else:
-                logger.error(f'Failed to download from url: {url}')
-                continue
-        processed_data.append(file_path)
-        # ...and then as a .wav file (optional)
         
-        wav_path = file_path.replace('.pt', '.wav')
-        if not os.path.exists(wav_path):
-            if args.save_wav_file and args.dataset_type == 'waveform':
-                torchaudio.save(wav_path, waveform, args.sample_rate)
-
-    return processed_data
-
+    def preprocess_and_cache_dataset(self, args, cache_dir):
+        if args.dataset == 'spotify_sleep_dataset':
+            return preprocess_and_cache_spotifysleep_dataset(args, cache_dir)
+        elif args.dataset == 'musiccaps':
+            return preprocess_and_cache_musiccaps_dataset(args, cache_dir)
+        else:
+            raise ValueError(f'Unknown dataset specified: {args.dataset}.')
+        
         
 class CustomDataModule(LightningDataModule):
     def __init__(self, train_loader, val_loader, test_loader):
@@ -184,11 +114,11 @@ class CustomDataModule(LightningDataModule):
 
 def get_train_val_test_sets(args):
     logger.info(f'Initializing dataset: {args.dataset}')
-
-    if args.dataset == 'spotify_sleep_dataset':
-        df = pd.read_csv('data/SPD_unique_withClusters.csv')
-        dataset = AudioDataset(df, args)
-    elif args.dataset == 'random':
+    
+    # ======================
+    # Get dataset object
+    # ======================
+    if args.dataset == 'random':
         # Generate random data
         batch_size = args.train_batch_size  # Assuming batch_size is defined in args
         num_channels = args.num_channels
@@ -198,9 +128,8 @@ def get_train_val_test_sets(args):
         # Create a TensorDataset with random audio data and dummy sample rates (if necessary)
         sample_rate = args.sample_rate
         dataset = TensorDataset(random_audio_data, torch.full((batch_size,), sample_rate))
-        
     else:
-        raise ValueError("Unknown dataset_name")
+        dataset = AudioDataset(args)
 
     logger.info(f'Splitting into train, validation, and test.')
     # Set a fixed seed for reproducible initial split

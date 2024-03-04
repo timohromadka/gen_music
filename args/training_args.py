@@ -41,7 +41,6 @@ parser.add_argument('--dataset_type', type=str, default='waveform', choices=['wa
 parser.add_argument('--n_fft', type=int, default=400, help='Number of Fast Fourier Transform (FFT) points used for analyzing the audio signal. Basically, how many bins are we using to represent frequency spectrum?')
 parser.add_argument('--n_mels', type=int, default=128, help='The number of Mel bands to generate in the Mel spectrogram. This controls the frequency resolution of the Mel spectrogram. Typically, a larger number of Mel bands provides finer frequency resolution. A common default value is 128, but this can be adjusted based on specific audio analysis requirements or computational constraints.')
 parser.add_argument('--num_channels', type=int, help='Number of channels the audio waveform should have.')
-# test commit
 
 # Training Configuration
 parser.add_argument('--epochs', type=int, help='Maximum number of epochs for training.')
