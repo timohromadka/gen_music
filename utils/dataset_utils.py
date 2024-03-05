@@ -25,14 +25,6 @@ from utils.constants import SAMPLE_LENGTH
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('utils/dataset_utils.py')
 
-def get_spectrogram(waveform):
-    spectrogram = Spectrogram(n_fft=400)(waveform)
-    return spectrogram
-
-
-def get_mel_spectrogram(waveform, sample_rate, n_mels):
-    mel_spectrogram = MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)(waveform)
-    return mel_spectrogram
 
 def calculate_waveform_length(sample_length, sample_rate):
     return sample_length * sample_rate
@@ -120,30 +112,25 @@ def get_train_val_test_sets(args):
     # ======================
     if args.dataset == 'random':
         # Generate random data
-        batch_size = args.train_batch_size  # Assuming batch_size is defined in args
+        batch_size = args.train_batch_size
         num_channels = args.num_channels
-        length = 2**17  # Fixed length as specified
-        # Randomly generate audio data
+        length = 2**17 
         random_audio_data = torch.randn(batch_size, num_channels, length)
-        # Create a TensorDataset with random audio data and dummy sample rates (if necessary)
-        sample_rate = args.sample_rate
-        dataset = TensorDataset(random_audio_data, torch.full((batch_size,), sample_rate))
+
+        dataset = TensorDataset(random_audio_data, torch.full((batch_size,), args.sample_rate))
     else:
         dataset = AudioDataset(args)
 
-    logger.info(f'Splitting into train, validation, and test.')
-    # Set a fixed seed for reproducible initial split
+    logger.info('Splitting into train and validation.')
     generator = torch.Generator().manual_seed(args.val_split_seed)
 
-    # 80% train, 10% val, 10% test
-    train_size = int(0.8 * len(dataset))
-    temp_size = len(dataset) - train_size
-    train_dataset, temp_dataset = random_split(dataset, [train_size, temp_size], generator=generator)
-    
-    val_size = test_size = int(temp_size / 2)
-    val_dataset, test_dataset = random_split(temp_dataset, [val_size, test_size], generator=generator)
+    # Splitting into 90% train, 10% val, and a dummy dataset for test
+    train_size = int(0.9 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
+    test_dataset = torch.utils.data.Subset(dataset, []) # test dataset is empty and just for formalities
 
-    logger.info(f'Finished splitting. Train size: {len(train_dataset)}, Validation size: {len(val_dataset)}, Test size: {len(test_dataset)}')
+    logger.info(f'Finished splitting. Train size: {len(train_dataset)}, Validation size: {len(val_dataset)}')
 
     return train_dataset, val_dataset, test_dataset
     
