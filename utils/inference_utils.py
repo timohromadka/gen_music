@@ -16,7 +16,7 @@ def generate_samples(model, model_args, experiment_args, device, samples_save_di
         with torch.no_grad():
             for i in tqdm(range(experiment_args.num_batches_to_generate), desc='generating samples'):
                 noise = torch.randn(experiment_args.inference_batch_size, model_args.num_channels, waveform_length).to(device)
-                batch_samples = model.sample(noise, experiment_args.num_steps)
+                batch_samples = model.sample(noise, experiment_args.num_steps_for_inference)
                 
                 for j, sample in enumerate(batch_samples):
                     sample_file_path = os.path.join(samples_save_dir, f'sample_{i*experiment_args.inference_batch_size+j}.pt')
