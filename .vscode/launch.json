@@ -19,13 +19,13 @@
                 // "--experiment_type", "training",
 
                 "--save_wav_file",
-                "--dataset", "spotify_sleep_dataset",
+                "--dataset", "musiccaps",
                 "--dataset_type", "waveform", // "waveform", "mel-spectrogram"
                 "--model", "diffusion",
                 "--model_size", "tiny",
                 "--sample_length", "4",
                 "--trim_area", "random",
-                "--num_samples_for_train", "1000",
+                "--num_samples_for_train", "50",
                 "--val_check_interval", "20",
                 "--max_steps", "500",
                 "--num_channels", "1",
