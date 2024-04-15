@@ -19,14 +19,14 @@ parser.add_argument('--inference_batch_size', type=int, default=8, help='Batch s
 parser.add_argument('--generated_samples_dir', type=str, default='model_checkpoints', help='Name of parent directory where to store generated samples.')
 
 # Evaluation
-parser.add_argument("--metrics", nargs='+', default=['Frechet Distance', 'Inception Score', 'Kullback-Leibler'], help="Metrics for evaluation")
+parser.add_argument("--metrics", nargs='+', default=['fad'], choices=['fad', 'is', 'kl'], help="Metrics for evaluation")
 parser.add_argument('--path_to_original_dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'random'])
 
 # Dataset
-parser.add_argument('--dataset', type=str, required=False, default='spotify_sleep_dataset', choices=['spotify_sleep_dataset', 'musiccaps', 'random'])
+parser.add_argument('--dataset', type=str, required=False, default='musiccaps', choices=['spotify_sleep_dataset', 'musiccaps', 'random', 'drums'])
 parser.add_argument('--save_wav_file', required=False, action='store_true', help='If True, will save .wav files (waveform) for each data point in addition to .pt files.')
 parser.add_argument('--num_samples_for_train', required=False, type=int, default=0, help='Specify how many samples to use from the dataset. If nothing is set, then full dataset will be used.')
-parser.add_argument('--sample_length', required=False, type=int, help='Specify how long the samples should be, in seconds. If nothing is set, then the default of the dataset will be used.')
+parser.add_argument('--sample_length', required=False, type=int, default=65536, help='Specify how long the samples should be, in sampling frames. If nothing is set, then the default of the dataset will be used.')
 parser.add_argument('--trim_area', required=False, type=str, default='random', help='Specify where the audio trimming should happen. Choices are [random, start, end], default is random.')
 
 
@@ -54,6 +54,7 @@ parser.add_argument('--validation_batch_size', type=int, default=8, help='Batch 
 parser.add_argument('--gradient_clip_val', type=float, default=0.5, help='Gradient clipping value to prevent exploding gradients.')
 parser.add_argument('--checkpoint_dir', type=str, default='./model_checkpoints/', help='Directory to save model checkpoints.')
 parser.add_argument('--force_full_epoch_training', action='store_true', help='If True, then training will continue for the specified amount of epochs regardless.')
+
 # PyTorch Lightning Specific
 parser.add_argument('--precision', type=int, default=32, choices=[16, 32], help='Precision of training (32 or 16 for mixed precision).')
 parser.add_argument('--accelerator', type=str, default='gpu', help='Type of accelerator to use ("gpu" or "cpu").')
@@ -77,7 +78,7 @@ parser.add_argument('--metric_model_selection', type=str, default='val_loss',
                     choices=['cross_entropy_loss', 'total_loss', 'balanced_accuracy', 'accuracy', 'lr-Adam', 'train_loss', 'train_loss_step', 'train_acc', 'train_acc_step', 'val_loss', 'val_acc'], help='Metric used for model selection.')
 parser.add_argument('--patience_early_stopping', type=int, default=3,
                     help='Set number of checks (set by *val_check_interval*) to do early stopping. Minimum training duration: args.val_check_interval * args.patience_early_stopping epochs')
-parser.add_argument('--val_check_interval', type=float, default=1.0, 
+parser.add_argument('--val_check_interval', type=int, default=1.0, 
                     help='Number of steps at which to check the validation. If set to 1.0, will simply perform the default behaviour of an entire batch before validation.')
 parser.add_argument('--train_on_full_data', action='store_true', dest='train_on_full_data', \
                     help='Train on the full data (train + validation), leaving only `--test_split` for testing.')
@@ -87,7 +88,7 @@ parser.add_argument('--overfit_batches', type=int, default=0, help='PyTorch Ligh
 # Weights & Biases (wandb) Integration
 parser.add_argument('--wandb_project_name', type=str, default='th716_mphil_project')
 parser.add_argument('--wandb_run_name', type=str, default=f'run_{datetime.now().strftime("%Y%m%d_%H%M%S")}')
-parser.add_argument('--wandb_log_freq', type=int, default=10)
+parser.add_argument('--wandb_log_freq', type=int, default=1)
 parser.add_argument('--group', type=str, help="Group runs in wand")
 parser.add_argument('--job_type', type=str, help="Job type for wand")
 parser.add_argument('--notes', type=str, help="Notes for wandb logging.")
