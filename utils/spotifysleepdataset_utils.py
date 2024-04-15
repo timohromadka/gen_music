@@ -24,14 +24,6 @@ from utils.constants import SAMPLE_LENGTH
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('utils/spotifysleepdataset_utils.py')
 
-def get_spectrogram(waveform):
-    spectrogram = Spectrogram(n_fft=400)(waveform)
-    return spectrogram
-
-
-def get_mel_spectrogram(waveform, sample_rate, n_mels):
-    mel_spectrogram = MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)(waveform)
-    return mel_spectrogram
 
 def filter_df(df, dataset_name, n_samples=None):
     if dataset_name == 'spotify_sleep_dataset':
@@ -78,24 +70,22 @@ def preprocess_and_cache_spotifysleep_dataset(args, cache_dir):
             if response.status_code == 200:
                 waveform, sample_rate = torchaudio.load(BytesIO(response.content))
 
-                # Resample and convert to mono if required
-                if args.num_channels == 1:
-                    if waveform.size(0) > 1:
-                        waveform = torch.mean(waveform, dim=0, keepdim=True)
-                    else:
-                        raise ValueError("Cannot convert waveform to 2 channels since it only has 1 channel.")
+                # # Resample and convert to mono if required
+                # if args.num_channels == 1:
+                #     if waveform.size(0) > 1:
+                #         waveform = torch.mean(waveform, dim=0, keepdim=True)
                     
-                if sample_rate != args.sample_rate:
-                    resampler = Resample(orig_freq=sample_rate, new_freq=args.sample_rate)
-                    waveform = resampler(waveform)
+                # if sample_rate != args.sample_rate:
+                #     resampler = Resample(orig_freq=sample_rate, new_freq=args.sample_rate)
+                #     waveform = resampler(waveform)
 
-                if args.dataset_type == 'spectrogram':
-                    waveform = get_spectrogram(waveform)
-                elif args.dataset_type == 'mel-spectrogram':
-                    waveform = get_mel_spectrogram(waveform, sample_rate, args.n_mels)
+                # if args.dataset_type == 'spectrogram':
+                #     waveform = get_spectrogram(waveform)
+                # elif args.dataset_type == 'mel-spectrogram':
+                #     waveform = get_mel_spectrogram(waveform, sample_rate, args.n_mels)
 
                 # save as a .pt tensor
-                torch.save((waveform, args.sample_rate), file_path)
+                torch.save((waveform, sample_rate), file_path)
 
             else:
                 logger.error(f'Failed to download from url: {url}')
@@ -106,6 +96,6 @@ def preprocess_and_cache_spotifysleep_dataset(args, cache_dir):
         wav_path = file_path.replace('.pt', '.wav')
         if not os.path.exists(wav_path):
             if args.save_wav_file and args.dataset_type == 'waveform':
-                torchaudio.save(wav_path, waveform, args.sample_rate)
+                torchaudio.save(wav_path, waveform, sample_rate)
 
     return processed_data

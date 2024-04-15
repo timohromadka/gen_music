@@ -13,23 +13,32 @@ class AudioDiffusionLightningModule(pl.LightningModule):
         self.args = args
         self.on_step = not args.train_by_epochs
         self.on_epoch = args.train_by_epochs
+        self.dim = 1 if args.dataset_type == 'waveform' else 2
         logger.info('Initializing diffusion model using DiffusionModel class.')
 
         # Adjustments for "large" and "medium" to have 8 layers, "small" and "tiny" to have 4 layers
         if args.model_size == 'large':
-            channels = [32, 64, 128, 256, 512, 512, 1024, 1024]  # 8 layers
-            factors = [1, 2, 2, 2, 2, 2, 2, 2]
-            items = [1, 1, 2, 2, 2, 4, 4, 4]
-            attentions = [0, 0, 1, 1, 1, 1, 1, 1]
-            attention_heads = 8
-            attention_features = 64
-        elif args.model_size == 'medium':
-            channels = [16, 32, 64, 128, 256, 256, 512, 512]  # 8 layers
-            factors = [1, 2, 2, 2, 2, 2, 2, 2]
-            items = [1, 1, 1, 2, 2, 2, 4, 4]
-            attentions = [0, 0, 0, 1, 1, 1, 1, 1]
-            attention_heads = 4
+            channels = [128, 256, 256, 512, 512, 1024]  # 8 layers
+            factors = [1, 2, 2, 2, 2, 2]
+            items = [2, 2, 2, 2, 4, 4]
+            attentions = [0, 0, 0, 1, 1, 1]
+            attention_heads = 6
             attention_features = 32
+            
+        elif args.model_size == 'medium':
+            channels = [32, 32, 64, 64, 128, 128, 256, 256] # U-Net: channels at each layer
+            factors = [1, 2, 2, 2, 2, 2, 2, 2] # U-Net: downsampling and upsampling factors at each layer
+            items = [2, 2, 2, 2, 2, 2, 4, 4] # U-Net: number of repeating items at each layer
+            attentions = [0, 0, 0, 0, 0, 1, 1, 1] # U-Net: attention enabled/disabled at each layer
+            attention_heads = 8 # U-Net: number of attention heads per attention item
+            attention_features = 64 # U-Net: number of attention features per attention item  
+        # elif args.model_size == 'medium':
+        #     channels = [16, 32, 64, 128, 256, 256, 512, 512]  # 8 layers
+        #     factors = [1, 2, 2, 2, 2, 2, 2, 2]
+        #     items = [1, 1, 1, 2, 2, 2, 4, 4]
+        #     attentions = [0, 0, 0, 1, 1, 1, 1, 1]
+        #     attention_heads = 4
+        #     attention_features = 32
         elif args.model_size == 'small':
             channels = [16, 32, 64, 128]  # 4 layers
             factors = [1, 2, 2, 2]
@@ -49,6 +58,7 @@ class AudioDiffusionLightningModule(pl.LightningModule):
 
         self.model = DiffusionModel(
             net_t=UNetV0,
+            dim=self.dim,
             in_channels=args.num_channels,
             channels=channels,
             factors=factors,

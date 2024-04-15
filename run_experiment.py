@@ -33,7 +33,7 @@ def process_results(args):
 
 def run_dummy_experiment(wandb_logger):
     train_dataloader = get_dummy_dataloader()
-    test_dataloader = get_dummy_dataloader() 
+    test_dataloader = get_dummy_dataloader()
 
     model = DummyModel()
     trainer = pl.Trainer(max_epochs=3, logger=wandb_logger)
@@ -73,7 +73,6 @@ def main():
                 train_model(args, data_module, wandb_logger)
                 
                 process_results(args)
-                
         
         elif args.experiment_type == 'inference':
             model, model_args = load_model_from_run_name(args)

@@ -103,6 +103,7 @@ def train_model(args, data_module, wandb_logger=None):
         "logger": wandb_logger,
         "log_every_n_steps": args.logging_interval,
         "val_check_interval": args.val_check_interval,
+        "check_val_every_n_epoch": None,
         "callbacks": callbacks,
         "precision": args.precision,
         "detect_anomaly": False,

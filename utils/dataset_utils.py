@@ -20,30 +20,51 @@ from pytorch_lightning import LightningDataModule
 
 from utils.musiccaps_utils import preprocess_and_cache_musiccaps_dataset
 from utils.spotifysleepdataset_utils import preprocess_and_cache_spotifysleep_dataset
+from utils.drums_utils import preprocess_and_cache_drums_dataset
 from utils.constants import SAMPLE_LENGTH
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('utils/dataset_utils.py')
 
+def get_spectrogram(waveform):
+    spectrogram = Spectrogram(n_fft=400)(waveform)
+    return spectrogram
+
+def get_mel_spectrogram(waveform, sample_rate, n_fft=1024, win_length=None, hop_length=None, n_mels=128, f_min=0.0, f_max=None, device='cuda'):
+    mel_spectrogram_transform = torchaudio.transforms.MelSpectrogram(
+        sample_rate=sample_rate,
+        n_fft=n_fft,
+        win_length=win_length,
+        hop_length=hop_length,
+        n_mels=n_mels,
+        f_min=f_min,
+        f_max=f_max
+    ).to(device)
+    mel_spectrogram = mel_spectrogram_transform(waveform.to(device))
+    mel_spectrogram = mel_spectrogram[:, :, :-1]
+    return mel_spectrogram
 
 def calculate_waveform_length(sample_length, sample_rate):
     return sample_length * sample_rate
 
-def get_trimmed_waveform(waveform, sample_rate, sample_length, trim_area='random'):
+def get_trimmed_waveform(waveform, sample_length, trim_area='random'):
+    """
+    `Samples' refers to how many samples per second for a single audio, not meaning a data point in a dataset
+    """
     total_samples = waveform.shape[1]
-    num_samples_to_trim = sample_length * sample_rate
+    # num_samples_to_trim = int(sample_length * sample_rate)
 
-    if total_samples <= num_samples_to_trim:
+    if total_samples <= sample_length:
         return waveform
 
     if trim_area == 'start':
-        trimmed_waveform = waveform[:, :num_samples_to_trim]
+        trimmed_waveform = waveform[:, :sample_length]
     elif trim_area == 'random':
-        max_start_point = total_samples - num_samples_to_trim
+        max_start_point = total_samples - sample_length
         start_point = np.random.randint(0, max_start_point)
-        trimmed_waveform = waveform[:, start_point:start_point + num_samples_to_trim]
+        trimmed_waveform = waveform[:, start_point:start_point + sample_length]
     elif trim_area == 'end':
-        trimmed_waveform = waveform[:, -num_samples_to_trim:]
+        trimmed_waveform = waveform[:, -sample_length:]
     else:
         raise ValueError("trim_area must be 'start', 'random', or 'end'")
 
@@ -51,13 +72,14 @@ def get_trimmed_waveform(waveform, sample_rate, sample_length, trim_area='random
     
 
 
-
 class AudioDataset(Dataset):
     def __init__(self, args):
         self.dataset_type = args.dataset_type
-        self.cache_dir = os.path.join(args.cache_dir, args.dataset, self.dataset_type)
+        self.cache_dir = os.path.join(args.cache_dir, args.dataset, 'waveform')
         self.sample_rate = args.sample_rate
         self.trim_area = args.trim_area
+        self.num_channels = args.num_channels
+        self.n_mels = args.n_mels
         self.sample_length = SAMPLE_LENGTH[args.dataset] if not args.sample_length else args.sample_length
         
         os.makedirs(self.cache_dir, exist_ok=True)
@@ -68,12 +90,39 @@ class AudioDataset(Dataset):
         return len(self.data_paths)
 
     def __getitem__(self, idx):
+        """
+        Perform any data-specific processing on the waveform. This includes:
+        - trimming
+        - downmixing (2 channels -> 1 channel)
+        - downsampling
+        - converting to (mel-)spectrogram
+        """
         file_path = self.data_paths[idx]
         if os.path.exists(file_path):
             waveform, sample_rate = torch.load(file_path)
+       
+            # Resample and convert to mono if required
+            # if we're converting to a mel-spectrogram, we need to have 1 channel
+            if self.num_channels == 1 or self.dataset_type in ['mel-spectrogram', 'spectrogram']:
+                if waveform.size(0) > 1:
+                    waveform = torch.mean(waveform, dim=0, keepdim=True)
+                
+            if sample_rate != self.sample_rate:
+                resampler = Resample(orig_freq=sample_rate, new_freq=self.sample_rate)
+                waveform = resampler(waveform)
+
             # Trim the waveform as necessary using the get_trimmed_waveform function
-            waveform = get_trimmed_waveform(waveform, sample_rate, self.sample_length, trim_area=self.trim_area)
-            return waveform, sample_rate
+            waveform = get_trimmed_waveform(waveform, self.sample_length, trim_area=self.trim_area)
+                
+
+            if self.dataset_type == 'spectrogram':
+                spec = get_spectrogram(waveform)
+                return spec, sample_rate
+            elif self.dataset_type == 'mel-spectrogram':
+                mel_spec = get_mel_spectrogram(waveform, sample_rate, self.n_mels)
+                return mel_spec, sample_rate
+            else:  
+                return waveform, sample_rate
         else:
             logger.error(f'File not found: {file_path}')
             return None, None
@@ -83,6 +132,8 @@ class AudioDataset(Dataset):
             return preprocess_and_cache_spotifysleep_dataset(args, cache_dir)
         elif args.dataset == 'musiccaps':
             return preprocess_and_cache_musiccaps_dataset(args, cache_dir)
+        elif args.dataset == 'drums':
+            return preprocess_and_cache_drums_dataset(args, cache_dir)
         else:
             raise ValueError(f'Unknown dataset specified: {args.dataset}.')
         
@@ -102,6 +153,7 @@ class CustomDataModule(LightningDataModule):
 
     def test_dataloader(self):
         return self.test_loader
+
 
 
 def get_train_val_test_sets(args):
