@@ -11,30 +11,32 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "python": "/home/timoh/anaconda3/envs/GEN_MUSIC/bin/python",
+            // "python": "/home/timoh/anaconda3/envs/GEN_MUSIC/bin/python",
+            "python": "/home/th716/.conda/envs/GEN_MUSIC/bin/python",
             "args": [
                 "--experiment_type", "training",
-                "--run_name_to_load", "run_20240229_204802",
+                "--run_name_to_load", "run_20240304_123545",
 
                 // "--experiment_type", "training",
 
                 "--save_wav_file",
                 "--dataset", "musiccaps",
-                "--dataset_type", "waveform", // "waveform", "mel-spectrogram"
+                "--dataset_type", "mel-spectrogram", // "waveform", "mel-spectrogram"
                 "--model", "diffusion",
                 "--model_size", "tiny",
                 "--sample_length", "4",
                 "--trim_area", "random",
-                "--num_samples_for_train", "50",
+                "--num_samples_for_train", "200",
                 "--val_check_interval", "20",
                 "--max_steps", "500",
                 "--num_channels", "1",
                 "--train_batch_size", "8",
                 "--sample_rate", "22048", // "44100",
                 "--patience_early_stopping", "10",
-                // "--disable_wandb",
-                "--num_batches_to_generate", "2",
-                "--inference_batch_size", "2"
+                "--disable_wandb",
+                "--num_batches_to_generate", "1",
+                "--inference_batch_size", "8",
+                "--num_steps_for_inference", "1000",
                 // "--run_dummy_experiment"
             ],
             "env": {

@@ -74,8 +74,6 @@ def main():
                 
                 process_results(args)
                 
-        # TODO, WHY IS DATAA NOT LOADING?I IT SHOULD BE LOADING 1000 data points!!!
-        # what should the size of my architecture be???
         
         elif args.experiment_type == 'inference':
             model, model_args = load_model_from_run_name(args)

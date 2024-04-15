@@ -20,11 +20,18 @@ from pytorch_lightning import LightningDataModule
 
 from utils.musiccaps_utils import process_and_download_musiccaps
 from utils.constants import SAMPLE_LENGTH
-from utils.dataset_utils import get_mel_spectrogram, get_spectrogram
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('utils/dataset_utils.py')
+logger = logging.getLogger('utils/spotifysleepdataset_utils.py')
 
+def get_spectrogram(waveform):
+    spectrogram = Spectrogram(n_fft=400)(waveform)
+    return spectrogram
+
+
+def get_mel_spectrogram(waveform, sample_rate, n_mels):
+    mel_spectrogram = MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)(waveform)
+    return mel_spectrogram
 
 def filter_df(df, dataset_name, n_samples=None):
     if dataset_name == 'spotify_sleep_dataset':

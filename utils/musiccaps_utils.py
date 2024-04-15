@@ -10,11 +10,23 @@ import os
 from pathlib import Path
 import torch
 import torchaudio
+from torchaudio.transforms import Spectrogram, MelSpectrogram, Resample
 
 from datasets import load_dataset, Audio
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('utils/dataset_utils.py')
+logger = logging.getLogger('utils/musiccaps_utils.py')
+
+# TODO:
+#  restructure so that if requested, spectrogram conversions happens in dataset_utils
+def get_spectrogram(waveform):
+    spectrogram = Spectrogram(n_fft=400)(waveform)
+    return spectrogram
+
+
+def get_mel_spectrogram(waveform, sample_rate, n_mels):
+    mel_spectrogram = MelSpectrogram(sample_rate=sample_rate, n_mels=n_mels)(waveform)
+    return mel_spectrogram
 
 def download_clip(
     video_identifier,
@@ -71,15 +83,16 @@ def process_and_download_musiccaps(
         example['download_status'] = status
         return example
 
+    logger.info('Beginning mapping process to extract youtube audios.')
     return ds.map(process, num_proc=num_proc, writer_batch_size=writer_batch_size, keep_in_memory=False).cast_column('audio', Audio(sampling_rate=sampling_rate))
 
 def preprocess_and_cache_musiccaps_dataset(args, cache_dir):
-    logging.info('Processing MusicCaps dataset...')
+    logger.info('Processing MusicCaps dataset...')
     ds = process_and_download_musiccaps(
         cache_dir,
         sampling_rate=args.sample_rate,
         limit=args.num_samples_for_train,
-        num_proc=4
+        num_proc=args.num_gpus
     )
 
     processed_data = []
